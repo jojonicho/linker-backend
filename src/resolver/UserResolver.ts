@@ -18,11 +18,6 @@ import { COOKIE_NAME } from "../constants";
 
 @Resolver()
 export class UserResolver {
-  @Query(() => String)
-  hello() {
-    return "hello warudo!";
-  }
-
   @Query(() => User, { nullable: true })
   me(@Ctx() { req }: MyContext) {
     if (!req.session.userId) return null;
@@ -106,7 +101,6 @@ export class UserResolver {
 
   @Mutation(() => Boolean)
   logout(@Ctx() { req, res }: MyContext) {
-    // sendRefreshToken(res, "");
     return new Promise((resolve) =>
       req.session.destroy((err) => {
         res.clearCookie(COOKIE_NAME);
@@ -115,9 +109,15 @@ export class UserResolver {
           resolve(false);
           return;
         }
-
         resolve(true);
       })
     );
+  }
+
+  @Mutation(() => String)
+  changeImage(@Ctx() { req }: MyContext, @Arg("image") image: string) {
+    if (!req.session.userId) return null;
+    User.update({ id: req.session.userId }, { image });
+    return image;
   }
 }
