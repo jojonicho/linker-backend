@@ -10,6 +10,7 @@ import {
 import { ObjectType, Field, Int } from "type-graphql";
 import { Message } from "./Message";
 import { Channel } from "./Channel";
+import { Linker } from "./Linker";
 
 @ObjectType()
 @Entity("users")
@@ -38,6 +39,10 @@ export class User extends BaseEntity {
   @Field()
   @Column("text", { default: "https://i.imgur.com/7lIcAP5.gif" })
   image: string;
+
+  @Field(() => [Linker], { nullable: true })
+  @OneToMany(() => Linker, (linker) => linker.user)
+  linkers: Linker[];
 
   @Field(() => [Message], { nullable: true })
   @OneToMany(() => Message, (message) => message.user)

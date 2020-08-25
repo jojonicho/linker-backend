@@ -1,24 +1,14 @@
-import {
-  Resolver,
-  Query,
-  Mutation,
-  Arg,
-  Ctx,
-  // UseMiddleware,
-  Int,
-} from "type-graphql";
+import { Resolver, Query, Mutation, Arg, Ctx } from "type-graphql";
 import { hash, compare } from "bcryptjs";
-// import { isAuth } from "../middleware/isAuth";
-import { getConnection } from "typeorm";
 import { MyContext } from "./types/context";
 import { User } from "../entity/User";
 import { RegisterInput } from "../entity/types/Input";
-// import { sendRefreshToken } from "../utils/sendRefreshToken";
 import { COOKIE_NAME } from "../constants";
 
-@Resolver()
+@Resolver(User)
 export class UserResolver {
   @Query(() => User, { nullable: true })
+  // @UseMiddleware(isAuth)
   me(@Ctx() { req }: MyContext) {
     if (!req.session.userId) return null;
     return User.findOne(req.session.userId);
@@ -33,7 +23,6 @@ export class UserResolver {
   async register(
     @Arg("input") { email, username, password }: RegisterInput
   ): Promise<boolean> {
-    console.log(email, username, password);
     const hashedPassword = await hash(password, 12);
     try {
       const user = User.create({
@@ -60,19 +49,10 @@ export class UserResolver {
   //   return true;
   // }
 
-  @Mutation(() => Boolean)
-  async revokeRefreshTokenUser(@Arg("userId", () => Int) userId: number) {
-    await getConnection()
-      .getRepository(User)
-      .increment({ id: userId }, "tokenVersion", 1);
-    return true;
-  }
-
   @Mutation(() => User)
   async login(
     @Arg("email") email: string,
     @Arg("password") password: string,
-    // @Ctx() { req, res }: MyContext
     @Ctx() { req }: MyContext
   ): Promise<User> {
     const user = await User.findOne({ where: { email } });

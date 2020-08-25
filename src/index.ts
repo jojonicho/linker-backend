@@ -11,8 +11,7 @@ import { buildSchema } from "type-graphql";
 import cookieParser from "cookie-parser";
 
 import { UserResolver } from "./resolver/UserResolver";
-import { MessageResolver } from "./resolver/MessageResolver";
-import { ChannelResolver } from "./resolver/ChannelResolver";
+import { LinkerResolver } from "./resolver/LinkerResolver";
 import { createServer } from "http";
 import {
   __prod__,
@@ -72,8 +71,8 @@ const databaseUrl = process.env.DATABASE_URL; // heroku specific
 
   const server = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [UserResolver, MessageResolver, ChannelResolver],
-      dateScalarMode: "isoDate", // "timestamp" or "isoDate"
+      resolvers: [UserResolver, LinkerResolver],
+      dateScalarMode: "timestamp", // "timestamp" or "isoDate"
     }),
     subscriptions: {
       path: "/subscriptions",

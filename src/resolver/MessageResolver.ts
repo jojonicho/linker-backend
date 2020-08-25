@@ -1,4 +1,3 @@
-// import { Resolver, Subscription, Query, Ctx } from "type-graphql";
 import {
   Resolver,
   Query,
@@ -74,36 +73,36 @@ export class MessageResolver {
     };
   }
 
-  @Query(() => PaginatedMessages)
-  async channelMessages(
-    @Arg("channelId", () => Int) channelId: number,
-    @Arg("limit", () => Int) limit: number,
-    @Arg("cursor", () => String, { nullable: true }) cursor: string | null
-  ): Promise<PaginatedMessages> {
-    const realLimit = Math.min(25, limit);
-    const realLimitPlusOne = realLimit + 1;
+  // @Query(() => PaginatedMessages)
+  // async channelMessages(
+  //   @Arg("channelId", () => Int) channelId: number,
+  //   @Arg("limit", () => Int) limit: number,
+  //   @Arg("cursor", () => String, { nullable: true }) cursor: string | null
+  // ): Promise<PaginatedMessages> {
+  //   const realLimit = Math.min(25, limit);
+  //   const realLimitPlusOne = realLimit + 1;
 
-    const qb = getConnection()
-      .getRepository(Message)
-      .createQueryBuilder("m")
-      .where("m.channel = :id", { id: channelId })
-      .innerJoinAndSelect("m.user", "u", "u.id = m.user.id")
-      .orderBy("m.date", "DESC")
-      .take(realLimitPlusOne);
+  //   const qb = getConnection()
+  //     .getRepository(Message)
+  //     .createQueryBuilder("m")
+  //     .where("m.channel = :id", { id: channelId })
+  //     .innerJoinAndSelect("m.user", "u", "u.id = m.user.id")
+  //     .orderBy("m.date", "DESC")
+  //     .take(realLimitPlusOne);
 
-    if (cursor) {
-      qb.where("m.date < :cursor", {
-        cursor: new Date(parseInt(cursor)),
-      });
-    }
+  //   if (cursor) {
+  //     qb.where("m.date < :cursor", {
+  //       cursor: new Date(parseInt(cursor)),
+  //     });
+  //   }
 
-    const messages = await qb.getMany();
+  //   const messages = await qb.getMany();
 
-    return {
-      messages: messages.slice(0, realLimit),
-      hasMore: messages.length === realLimitPlusOne,
-    };
-  }
+  //   return {
+  //     messages: messages.slice(0, realLimit),
+  //     hasMore: messages.length === realLimitPlusOne,
+  //   };
+  // }
 
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
