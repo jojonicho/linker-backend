@@ -41,7 +41,7 @@ export class User extends BaseEntity {
   image: string;
 
   @Field(() => [Linker], { nullable: true })
-  @OneToMany(() => Linker, (linker) => linker.user)
+  @OneToMany(() => Linker, (linker) => linker.user, { onDelete: "CASCADE" })
   linkers: Linker[];
 
   @Field(() => [Message], { nullable: true })

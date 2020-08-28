@@ -41,3 +41,11 @@ export class RegisterInput {
   @Column("text", { nullable: false })
   password: string;
 }
+
+@InputType()
+export class LinkerInput {
+  @Field()
+  title: string;
+  @Field()
+  description: string;
+}

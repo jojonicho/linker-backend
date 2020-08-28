@@ -12,6 +12,7 @@ import cookieParser from "cookie-parser";
 
 import { UserResolver } from "./resolver/UserResolver";
 import { LinkerResolver } from "./resolver/LinkerResolver";
+import { LinkResolver } from "./resolver/LinkResolver";
 import { createServer } from "http";
 import {
   __prod__,
@@ -71,7 +72,7 @@ const databaseUrl = process.env.DATABASE_URL; // heroku specific
 
   const server = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [UserResolver, LinkerResolver],
+      resolvers: [UserResolver, LinkerResolver, LinkResolver],
       dateScalarMode: "timestamp", // "timestamp" or "isoDate"
     }),
     subscriptions: {

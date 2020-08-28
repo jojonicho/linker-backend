@@ -6,14 +6,16 @@ import {
   Arg,
   Int,
   Ctx,
-  // UseMiddleware,
   Mutation,
+  UseMiddleware,
 } from "type-graphql";
 import { Linker } from "../entity/Linker";
 import { MyContext } from "./types/context";
-// import { isAuth } from "../middleware/isAuth";
 import { getConnection } from "typeorm";
-import { User } from "../entity/User";
+import { isAuth } from "../middleware/isAuth";
+import { LinkerInput } from "../entity/types/Input";
+import { Link } from "../entity/Link";
+// import { User } from "../entity/User";
 
 @ObjectType()
 class PaginatedLinkers {
@@ -25,38 +27,66 @@ class PaginatedLinkers {
 
 Resolver(Linker);
 export class LinkerResolver {
-  @Mutation(() => Boolean)
+  @Mutation(() => Linker)
+  @UseMiddleware(isAuth)
   async createLinker(
     @Ctx() { req }: MyContext,
-    @Arg("title", () => String) title: string,
-    @Arg("description", () => String) description: string
+    @Arg("input") input: LinkerInput
   ) {
-    if (!req.session.userId) return null;
+    // if (!req.session.userId) return null;
     const { userId } = req.session;
-    const user = await User.findOne(req.session.userId);
-    const linker = Linker.create({
-      title,
-      description,
-      user,
+    const linker = await Linker.create({
+      ...input,
       userId,
-    });
-    await linker.save();
-    return true;
+    }).save();
+    const link = await Link.create({
+      linkerId: linker.id,
+      url: "example.com",
+    }).save();
+    await getConnection()
+      .createQueryBuilder()
+      .relation(Linker, "links")
+      .of(linker)
+      .add(link);
+    return linker;
+  }
+
+  @Mutation(() => Link)
+  @UseMiddleware(isAuth)
+  async createLink(
+    @Arg("url") url: string,
+    @Arg("linkerId", () => Int) linkerId: number
+  ) {
+    return Link.create({
+      linkerId: linkerId,
+      url,
+    }).save();
   }
 
   @Mutation(() => Linker, { nullable: true })
   async updateLinker(
     @Ctx() { req }: MyContext,
     @Arg("id", () => Int) id: number,
-    @Arg("title", () => String) title: string,
-    @Arg("description", () => String) description: string
+    @Arg("title", () => String, { nullable: true }) title: string,
+    @Arg("description", () => String, { nullable: true }) description: string,
+    @Arg("link", () => String, { nullable: true }) link: string
   ) {
     if (!req.session.userId) return null;
+    if (!title && !description && !link) return null;
     const { userId } = req.session;
-    const result = await getConnection()
-      .createQueryBuilder()
-      .update(Linker)
-      .set({ title, description })
+    const qb = getConnection().createQueryBuilder().update(Linker);
+    if (title && description) {
+      qb.set({ title, description });
+    } else if (title) {
+      qb.set({ title });
+    } else if (description) {
+      qb.set({ description });
+    }
+    if (link) {
+      const linkObj = Link.create({ linkerId: id, url: link }).save();
+      qb.relation(Linker, "links").of(id).add(linkObj);
+    }
+    const result = await qb
       .where('id = :id and "userId" = :userId', {
         id,
         userId,
@@ -73,32 +103,39 @@ export class LinkerResolver {
     @Arg("id", () => Int) id: number
   ) {
     if (!req.session.userId) return null;
-    Linker.delete(id);
+    const { userId } = req.session;
+    await Linker.delete({ id, userId });
     return true;
   }
 
-  @Query(() => PaginatedLinkers, { nullable: true })
+  @Query(() => PaginatedLinkers)
   async linkers(
     @Arg("limit", () => Int) limit: number,
     @Arg("cursor", () => String, { nullable: true }) cursor: string | null,
     @Ctx() { req }: MyContext
   ) {
-    // if (!req.session.userId) return null;
+    if (!req.session.userId) return null;
     const userId = req.session.userId;
     const realLimit = Math.min(10, limit);
     const realLimitPlusOne = realLimit + 1;
 
-    const msg = getConnection().getRepository(Linker).createQueryBuilder("l");
-
-    if (userId) {
-      msg.innerJoinAndSelect("l.user", "u", "u.id = :userId", {
+    const linker = getConnection()
+      .getRepository(Linker)
+      .createQueryBuilder("l")
+      .innerJoinAndSelect("l.user", "u", "u.id = :userId", {
         userId,
       });
-    }
-    const qb = msg
+
+    linker
+      .leftJoinAndSelect("l.links", "k", "k.linkerId = l.id")
+      .orderBy("k.date", "ASC");
+
+    const qb = linker
       .innerJoinAndSelect("l.user", "c", "c.id = l.user.id")
       .orderBy("l.date", "DESC")
       .take(realLimitPlusOne);
+    // .orderBy({ "l.date": "DESC", "k.date": "ASC" });
+    // .addOrderBy("k.date", "ASC");
 
     if (cursor) {
       qb.where("l.date < :cursor", {
@@ -106,11 +143,16 @@ export class LinkerResolver {
       });
     }
 
-    const messages = await qb.getMany();
-
+    // const linkers = await qb.addOrderBy("k.date", "ASC").getMany();
+    // const linkers = await qb.orderBy("k.date", "ASC").getMany();
+    const linkers = await qb.getMany();
+    // console.log(linkers.length);
+    // const rawLinkers = await qb.getRawMany();
+    // console.log(rawLinkers.entities);
+    // console.log(rawLinkers.raw);
     return {
-      linkers: messages.slice(0, realLimit),
-      hasMore: messages.length === realLimitPlusOne,
+      linkers: linkers.slice(0, realLimit),
+      hasMore: linkers.length === realLimitPlusOne,
     };
   }
 }

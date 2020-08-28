@@ -1,9 +1,10 @@
-import { Resolver, Query, Mutation, Arg, Ctx } from "type-graphql";
+import { Resolver, Query, Mutation, Arg, Ctx, Int } from "type-graphql";
 import { hash, compare } from "bcryptjs";
 import { MyContext } from "./types/context";
 import { User } from "../entity/User";
 import { RegisterInput } from "../entity/types/Input";
 import { COOKIE_NAME } from "../constants";
+import { getConnection } from "typeorm";
 
 @Resolver(User)
 export class UserResolver {
@@ -12,6 +13,17 @@ export class UserResolver {
   me(@Ctx() { req }: MyContext) {
     if (!req.session.userId) return null;
     return User.findOne(req.session.userId);
+  }
+
+  @Query(() => User, { nullable: true })
+  async user(@Arg("id", () => Int) id: number) {
+    const qb = getConnection()
+      .getRepository(User)
+      .createQueryBuilder("u")
+      .innerJoinAndSelect("u.linkers", "l", "l.userId = :id", {
+        id,
+      });
+    return await qb.getOne();
   }
 
   @Query(() => [User])
